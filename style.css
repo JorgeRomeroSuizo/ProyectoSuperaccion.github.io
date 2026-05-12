@@ -24,6 +24,7 @@ body {
     height: 100vh;
 }
 h1{
+    padding: 5px;
     color: #4d2080;
     font-weight: normal;
     scale: 150%;
