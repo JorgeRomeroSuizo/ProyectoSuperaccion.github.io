@@ -1,8 +1,35 @@
+const firebaseConfig = {
+    apiKey: "AIzaSyAXD6ZaDuXJBiaHue40xGxY6JvVouER_QA",
+    authDomain: "superaccionchat.firebaseapp.com",
+    databaseURL: "https://superaccionchat-default-rtdb.firebaseio.com",
+    projectId: "superaccionchat",
+    storageBucket: "superaccionchat.firebasestorage.app",
+    messagingSenderId: "430325481857",
+    appId: "1:430325481857:web:67efe7bae4ba4df0f5e880"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 let boton1 = document.getElementById("iCrearCuenta")
-boton1.addEventListener("click", cambio1)
+let nombre = ""
+boton1.addEventListener("click", cambio0)
+function cambio0(){
+    document.body.innerHTML = `
+    <h1>Porfavor ingrese su nombre</h1>
+    <br>
+    <br>
+    <input id="name" placeholder="Tu nombre">
+    <br>
+    <br>
+    <button onclick="cambio1()">Listo para empezar</button>
+  `;
+
+}
 function cambio1(){
+    nombre = document.getElementById("name").value;
     document.body.innerHTML = `
     <h1>¿Te cuesta socializar?</h1>
+    <br>
     <br>
     <button>No mucho</button>
     <br>
@@ -16,6 +43,7 @@ function cambio1(){
 function cambio2(){
     document.body.innerHTML = `
     <h1>¿En qué situaciones te sientes mas incómodo?</h1>
+    <br>
     <br>
     <button>Hablar con desconocidos</button>
     <br>
@@ -33,6 +61,7 @@ function cambio3(){
     document.body.innerHTML = `
     <h1>¿Que ritmo prefieres para interactuar?</h1>
     <br>
+    <br>
     <button>Lento y tranquilo</button>
     <br>
     <br>
@@ -45,6 +74,7 @@ function cambio3(){
 function cambio4(){
     document.body.innerHTML = `
     <h1>¿Cómo te gustaría empezar a interactuar?</h1>
+    <br>
     <br>
     <button>Con ayuda guiada paso a paso</button>
     <br>
@@ -59,6 +89,7 @@ function cambio5(){
     document.body.innerHTML = `
     <h1>¿Quieres compartir algo mas sobre ti? (opcional)</h1>
     <br>
+    <br>
     <button>Si</button>
     <br>
     <br>
@@ -71,4 +102,35 @@ function cambio6(){
     <br>
     <div id="loader"></div>
   `;
+    setTimeout(() => cambio7(), 3000);
+}
+function cambio7() {
+    document.body.innerHTML = `
+    <div id="chat"></div>
+    <input id="message" placeholder="Mensaje">
+    <button onclick="sendMessage()">Enviar</button>
+  `;
+
+    const ahora = Date.now();
+
+    db.ref("messages").orderByChild("time").startAt(ahora).on("child_added", function(snapshot) {
+        const msg = snapshot.val();
+        document.getElementById("chat").innerHTML += `
+      <p><b>${msg.name}:</b> ${msg.text}</p>
+    `;
+    });
+}
+function sendMessage() {
+    const name = nombre;
+    const text = document.getElementById("message").value;
+
+    if (!name || !text) return;
+
+    db.ref("messages").push({
+        name: name,
+        text: text,
+        time: Date.now()
+    });
+
+    document.getElementById("message").value = "";
 }
