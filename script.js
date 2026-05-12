@@ -10,6 +10,27 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+//Variables compatibilidad
+let extraversion = 0
+let incomodidad = 0
+let ritmo = 0
+let inicio = 0
+
+
+function alterarV(cambio=0, ex=0, inc=0, rit=0, start=0){
+    if (ex===1) {
+    extraversion=extraversion+cambio
+    }
+    if (inc===1) {
+        incomodidad=incomodidad+cambio
+    }
+    if (rit===1) {
+        ritmo=ritmo+cambio
+    }
+    if (start===1) {
+        inicio=inicio+cambio
+    }
+}
 let boton1 = document.getElementById("iCrearCuenta")
 let nombre = ""
 boton1.addEventListener("click", cambio0)
@@ -31,10 +52,10 @@ function cambio1(){
     <h1>¿Te cuesta socializar?</h1>
     <br>
     <br>
-    <button>No mucho</button>
+    <button onclick="cambio2(); alterarV(cambio=1, ex=1, inc=0, rit=0, start=0)">No mucho</button>
     <br>
     <br>
-    <button onclick="cambio2()">A veces</button>
+    <button onclick="cambio2(); alterarV(cambio=0.5, ex=1, inc=0, rit=0, start=0)">A veces</button>
     <br>
     <br>
     <button>Si, bastante</button>
@@ -45,16 +66,16 @@ function cambio2(){
     <h1>¿En qué situaciones te sientes mas incómodo?</h1>
     <br>
     <br>
-    <button>Hablar con desconocidos</button>
+    <button onclick="cambio3(); alterarV(cambio=0.25, ex=0, inc=1, rit=0, start=0)">Hablar con desconocidos</button>
     <br>
     <br>
-    <button onclick="cambio3()">Grupos grandes</button>
+    <button onclick="cambio3(); alterarV(cambio=1, ex=0, inc=1, rit=0, start=0)">Grupos grandes</button>
     <br>
     <br>
-    <button>Iniciar conversaciones</button>
+    <button onclick="cambio3(); alterarV(cambio=0.50, ex=0, inc=1, rit=0, start=0)">Iniciar conversaciones</button>
     <br>
     <br>
-    <button>Mantener conversaciones</button>
+    <button onclick="cambio3(); alterarV(cambio=0.75, ex=0, inc=1, rit=0, start=0)">Mantener conversaciones</button>
   `;
 }
 function cambio3(){
@@ -62,13 +83,13 @@ function cambio3(){
     <h1>¿Que ritmo prefieres para interactuar?</h1>
     <br>
     <br>
-    <button>Lento y tranquilo</button>
+    <button onclick="cambio4(); alterarV(cambio=0.0, ex=0, inc=0, rit=1, start=0)">Lento y tranquilo</button>
     <br>
     <br>
-    <button onclick="cambio4()">Normal</button>
+    <button onclick="cambio4(); alterarV(cambio=0.5, ex=0, inc=0, rit=1, start=0)">Normal</button>
     <br>
     <br>
-    <button>Poco a poco pero constante</button>
+    <button onclick="cambio4(); alterarV(cambio=1, ex=0, inc=0, rit=1, start=0)">Poco a poco pero constante</button>
   `;
 }
 function cambio4(){
@@ -76,13 +97,13 @@ function cambio4(){
     <h1>¿Cómo te gustaría empezar a interactuar?</h1>
     <br>
     <br>
-    <button>Con ayuda guiada paso a paso</button>
+    <button onclick="cambio5(); alterarV(cambio=0.0, ex=0, inc=0, rit=0, start=1)">Con ayuda guiada paso a paso</button>
     <br>
     <br>
-    <button>Con alguien en una situación similar</button>
+    <button onclick="cambio5(); alterarV(cambio=0.5, ex=0, inc=0, rit=0, start=1)">Con alguien en una situación similar</button>
     <br>
     <br>
-    <button onclick="cambio5()">Solo explorar por ahora</button>
+    <button onclick="cambio5(); alterarV(cambio=1, ex=0, inc=0, rit=0, start=1)"">Solo explorar por ahora</button>
   `;
 }
 function cambio5(){
@@ -90,7 +111,7 @@ function cambio5(){
     <h1>¿Quieres compartir algo mas sobre ti? (opcional)</h1>
     <br>
     <br>
-    <button>Si</button>
+    <button onclick="alert('Esta funcion aun no esta disponible, agradecemos su paciencia')">Si</button>
     <br>
     <br>
     <button onclick="cambio6()">No</button>
