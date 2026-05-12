@@ -1,3 +1,4 @@
+// let userId = "";
 const firebaseConfig = {
     apiKey: "AIzaSyAXD6ZaDuXJBiaHue40xGxY6JvVouER_QA",
     authDomain: "superaccionchat.firebaseapp.com",
@@ -58,7 +59,7 @@ function cambio1(){
     <button onclick="cambio2(); alterarV(cambio=0.5, ex=1, inc=0, rit=0, start=0)">A veces</button>
     <br>
     <br>
-    <button>Si, bastante</button>
+    <button onclick="cambio2(); alterarV(cambio=0, ex=1, inc=0, rit=0, start=0)">Si, bastante</button>
   `;
 }
 function cambio2(){
@@ -125,33 +126,218 @@ function cambio6(){
   `;
     setTimeout(() => cambio7(), 3000);
 }
+let userId = db.ref("users").push().key; // unique ID for this user
+
 function cambio7() {
+    if (!sessionStorage.getItem("userId")) {
+        sessionStorage.setItem("userId", db.ref("users").push().key);
+    }
+    userId = sessionStorage.getItem("userId");
+
+    db.ref("users/" + userId).set({
+        nombre: nombre,
+        extraversion: extraversion,
+        incomodidad: incomodidad,
+        ritmo: ritmo,
+        inicio: inicio,
+        roomId: null,
+        time: Date.now()
+    }).then(() => {
+        escucharSolicitudes(); // start listening for requests
+        buscarMatch();
+    });
+}
+function buscarMatch() {
+    let segundos = 10;
+
     document.body.innerHTML = `
-    <div id="chat"></div>
-    <input id="message" placeholder="Mensaje">
-    <button onclick="sendMessage()">Enviar</button>
-  `;
+        <p>Buscando usuarios compatibles...</p>
+        <p id="countdown">${segundos} segundos</p>
+    `;
+
+    // Countdown timer
+    const timer = setInterval(() => {
+        segundos--;
+        if (document.getElementById("countdown")) {
+            document.getElementById("countdown").innerText = segundos + " segundos";
+        }
+        if (segundos <= 0) clearInterval(timer);
+    }, 1000);
+
+    // Keep checking for 30 seconds then show results
+    setTimeout(() => {
+        db.ref("users").once("value", function(snapshot) {
+            const users = snapshot.val();
+            let matches = [];
+
+            for (let id in users) {
+                if (id === userId) continue;
+                if (users[id].nombre === nombre) continue; // skip same name
+
+                if (Date.now() - users[id].time > 5 * 60 * 1000) {
+                    db.ref("users/" + id).remove(); // delete inactive user
+                    continue;
+                }
+                const u = users[id];
+                const score =
+                    Math.abs(u.extraversion - extraversion) +
+                    Math.abs(u.incomodidad - incomodidad) +
+                    Math.abs(u.ritmo - ritmo) +
+                    Math.abs(u.inicio - inicio);
+
+                matches.push({ id, score, ...u });
+            }
+            matches.sort((a, b) => a.score - b.score);
+            matches = matches.slice(0, 3);
+            mostrarMatches(matches);
+        });
+    }, 10000);
+}
+
+function mostrarMatches(matches) {
+    if (matches.length === 0) {
+        document.body.innerHTML = `
+            <h1>No encontramos usuarios compatibles aún</h1>
+            <p>Intenta más tarde</p>
+        `;
+        return;
+    }
+
+    const maxScore = 4;
+
+    let botones = matches.map(match => {
+        const compatibilidad = Math.round((1 - match.score / maxScore) * 100);
+        return `
+        <button onclick="iniciarChat('${match.id}', '${match.nombre}', ${compatibilidad})">
+            ${match.nombre} — ${compatibilidad}% compatible
+        </button>
+        <br><br>
+    `;
+    }).join("");
+
+    document.body.innerHTML = `
+        <h1>Usuarios compatibles</h1>
+        <br>
+        ${botones}
+    `;
+}
+function iniciarChat(matchId, matchNombre, compatibilidad) {
+    const roomId = userId < matchId
+        ? userId + "_" + matchId
+        : matchId + "_" + userId;
+
+    db.ref("users/" + matchId + "/request").set({
+        from: userId,
+        fromNombre: nombre,
+        roomId: roomId,
+        compatibilidad: compatibilidad
+    });
+
+    document.body.innerHTML = `<p>Esperando que ${matchNombre} acepte...</p>`;
+
+    // Listen for acceptance
+    db.ref("rooms/" + roomId + "/accepted").on("value", function(snapshot) {
+        if (snapshot.val() === true) {
+            entrarChat(roomId, matchNombre);
+        }
+    });
+}
+
+function aceptarChat(roomId, matchNombre, matchId) {
+    db.ref("users/" + userId + "/request").remove();
+    document.getElementById("popup")?.remove();
+
+    // Set accepted FIRST, then enter chat
+    db.ref("rooms/" + roomId + "/accepted").set(true).then(() => {
+        entrarChat(roomId, matchNombre);
+    });
+}
+function entrarChat(roomId, matchNombre) {
+    document.body.innerHTML = `
+        <h1>Chat con ${matchNombre}</h1>
+        <div id="chat"></div>
+        <input id="message" placeholder="Mensaje">
+        <button onclick="sendMessage('${roomId}')">Enviar</button>
+    `;
 
     const ahora = Date.now();
 
-    db.ref("messages").orderByChild("time").startAt(ahora).on("child_added", function(snapshot) {
-        const msg = snapshot.val();
-        document.getElementById("chat").innerHTML += `
-      <p><b>${msg.name}:</b> ${msg.text}</p>
-    `;
+    db.ref("rooms/" + roomId + "/messages")
+        .orderByChild("time").startAt(ahora)
+        .on("child_added", function(snapshot) {
+            const msg = snapshot.val();
+            document.getElementById("chat").innerHTML += `
+                <p><b>${msg.name}:</b> ${msg.text}</p>
+            `;
+        });
+}
+function escucharSolicitudes() {
+    db.ref("users/" + userId + "/request").on("value", function(snapshot) {
+        const req = snapshot.val();
+        if (!req) return;
+
+        // Show popup no matter what page they're on
+        const popup = document.createElement("div");
+        popup.id = "popup";
+        popup.innerHTML = `
+            <p><b>${req.fromNombre}</b> quiere hablar contigo</p>
+            <p>${req.compatibilidad}% compatible</p>
+            <button onclick="aceptarChat('${req.roomId}', '${req.fromNombre}', '${req.from}')">Aceptar</button>
+            <button onclick="rechazarChat('${req.from}')">Rechazar</button>
+        `;
+        document.body.appendChild(popup);
     });
 }
-function sendMessage() {
-    const name = nombre;
+
+
+function rechazarChat(matchId) {
+    db.ref("users/" + matchId + "/request").remove();
+    db.ref("users/" + userId + "/request").remove();
+    document.getElementById("popup")?.remove();
+}
+// function iniciarChat(matchId, matchNombre) {
+//     const roomId = userId < matchId
+//         ? userId + "_" + matchId
+//         : matchId + "_" + userId;
+//     db.ref("users/" + matchId + "/request").set({
+//         from: userId,
+//         fromNombre: nombre,
+//         roomId: roomId,
+//         compatibilidad: compatibilidad
+//     });
+//     db.ref("users/" + userId + "/roomId").set(roomId);
+//
+//     document.body.innerHTML = `
+//         <h1>Chat con ${matchNombre}</h1>
+//         <div id="chat"></div>
+//         <input id="message" placeholder="Mensaje">
+//         <button onclick="sendMessage('${roomId}')">Enviar</button>
+//     `;
+//
+//     const ahora = Date.now();
+//
+//     db.ref("rooms/" + roomId + "/messages")
+//         .orderByChild("time").startAt(ahora)
+//         .on("child_added", function(snapshot) {
+//             const msg = snapshot.val();
+//             document.getElementById("chat").innerHTML += `
+//                 <p><b>${msg.name}:</b> ${msg.text}</p>
+//             `;
+//         });
+// }
+
+function sendMessage(roomId) {
     const text = document.getElementById("message").value;
+    if (!text) return;
 
-    if (!name || !text) return;
-
-    db.ref("messages").push({
-        name: name,
+    db.ref("rooms/" + roomId + "/messages").push({
+        name: nombre,
         text: text,
         time: Date.now()
     });
 
     document.getElementById("message").value = "";
 }
+window.addEventListener("beforeunload", function() {
+    db.ref("users/" + userId).remove();
+});
